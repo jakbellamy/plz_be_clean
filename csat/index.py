@@ -150,8 +150,11 @@ def calculate_csat_score(series, floor_value=5, as_string=True):
                                   .dropna()))
     greater_or_equal_to_floor = len(
         [n for n in non_zero_scores if n > (floor_value - 1)])
-    raw_score = greater_or_equal_to_floor / len(non_zero_scores)
-
+    try:
+        raw_score = greater_or_equal_to_floor / len(non_zero_scores)
+    except:
+        raw_score = 0
+        
     if as_string:
         return round(raw_score * 100, 2)
     else:
