@@ -89,7 +89,7 @@ def read_processor_details(file):
             ammended_rows.append(row)
 
     df = pd.DataFrame(ammended_rows)
-    df['Loan Number'] = df['Loan Number'].apply(str)
+    df['Loan Number'] = df['Loan Number'].apply(lambda x: str(pd.to_numeric(x)))
 
     df['Team'] = df['Processor'].apply(assign_team)
     df.set_index('Loan Number', inplace=True)
@@ -113,7 +113,7 @@ def read_lo_details(file):
             ammended_rows.append(row)
 
     df = pd.DataFrame(ammended_rows)
-    df['Loan Number'] = df['Loan Number'].apply(str)
+    df['Loan Number'] = df['Loan Number'].apply(lambda x: str(pd.to_numeric(x)))
 
     df.set_index('Loan Number', inplace=True)
     return df
@@ -122,7 +122,7 @@ def read_lo_details(file):
 def read_fundings(file):
     df = pd.read_excel(sample_fundings, sheet_name='Details', skiprows=4)
     df.columns = [col.split('\n')[0] for col in df.columns]
-    df['Loan Number'] = df['Loan Number'].apply(pd.to_numeric)
+    df['Loan Number'] = df['Loan Number'].apply(lambda x: str(pd.to_numeric(x)))
     df.set_index('Loan Number', inplace=True)
     return df
 
@@ -139,7 +139,7 @@ def load_csat_data(csat_file, fundings_file):
     df = df.drop(columns=['LOS System'])
 
     df['Team'] = df['Processor'].apply(assign_team)
-    df['Loan Number'] = df['Loan Number'].apply(str)
+    df['Loan Number'] = df['Loan Number'].apply(lambda x: str(pd.to_numeric(x)))
 
     return df
 
@@ -154,7 +154,7 @@ def calculate_csat_score(series, floor_value=5, as_string=True):
         raw_score = greater_or_equal_to_floor / len(non_zero_scores)
     except:
         raw_score = 0
-        
+
     if as_string:
         return round(raw_score * 100, 2)
     else:
@@ -180,16 +180,20 @@ def create_word_cloud(df: 'pd.dataframe', col_name: str):
 
 def run_lo_report(top_box_floor=4):
     df = read_lo_details(sample_surveys)
+    fundings = read_fundings(sample_fundings)
+
+    df = df.drop(columns=['Loan Officer']).join(fundings[['Loan Officer']])
     loan_officers = list(set(df['Loan Officer']))
     
     grp = df.groupby('Loan Officer')
     scores = []
     for lo in loan_officers:
-        score = {'Loan Officer': lo}
-        score['Score'] = calculate_csat_score(grp.get_group(lo)['Top Box CSAT Feedback'],
-                                              floor_value=top_box_floor,
-                                              as_string=False)
-        scores.append(score)
+        if isinstance(lo, str):
+            score = {'Loan Officer': lo}
+            score['Score'] = calculate_csat_score(grp.get_group(lo)['Top Box CSAT Feedback'],
+                                                floor_value=top_box_floor,
+                                                as_string=False)
+            scores.append(score)
     return pd.DataFrame(scores)
 
 
