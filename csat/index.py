@@ -21,7 +21,7 @@ from openpyxl import load_workbook
 
 pd.options.mode.chained_assignment = None
 
-TARGET_MONTH = pd.to_datetime('2021-11-01')
+TARGET_MONTH = pd.to_datetime('2021-12-01')
 TARGET_ENDS = TARGET_MONTH + pd.offsets.MonthBegin(1)
 DAY_STAMP = str(pd.to_datetime("today")).split(' ')[0]
 
@@ -227,7 +227,7 @@ def run_app_to_ctc_report(file):
     app_dates = [d.date()
                  for d in df['Application Date'].apply(pd.to_datetime)]
     ctc_dates = [d.date() for d in df['Clear To Close'].apply(pd.to_datetime)]
-    holidays=['2021-11-25', '2021-11-26']
+    holidays=['2021-11-25', '2021-11-26', '2021-12-24', '2021-12-25', '2021-12-31']
     df['App To CTC'] = np.busday_count(app_dates, ctc_dates, holidays=holidays) + 1
 
     df = df[['Loan Number', 'Loan Processor', 'Loan Officer', 'Last Name',
