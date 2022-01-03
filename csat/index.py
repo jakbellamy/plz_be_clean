@@ -1,6 +1,20 @@
+# USE
+# 1. Download Reports 
+#   3099: 
+#       Date Range = 'Prior 2 Months From Today'
+#   2006: 
+#       Date Range =  'Prior 90 Days Thru Today'
+#   3073:  
+#       Date Range = 'Prior 60 Days
+#       Activity Type = 'Fundings'
+# 2. Leave file names as they are and place files in './MyReports/' folder.
+#   - If you wish to remove the old files, you can, but the program will always grab the latest ADDED file
+# 3. Run
+
+import glob
+import os
 import pandas as pd
 import numpy as np
-# import bamboolib as bam
 from wordcloud import WordCloud, STOPWORDS
 import matplotlib.pyplot as plt
 from openpyxl import load_workbook
@@ -8,10 +22,17 @@ from openpyxl import load_workbook
 pd.options.mode.chained_assignment = None
 
 TARGET_MONTH = pd.to_datetime('2021-11-01')
+TARGET_ENDS = TARGET_MONTH + pd.offsets.MonthBegin(1)
+DAY_STAMP = str(pd.to_datetime("today")).split(' ')[0]
 
-sample_surveys = './sample/Customer Satisfaction Surveys (3099) (7).xlsx'
-sample_fundings = './sample/Funding By Referral Source (2006) (10).xlsx'
-sample_detailed = './sample/Branch Production Details (3073) (7).xlsx'
+def latest_report(report_number):
+    report_files = [file for file in glob.glob('./MyReports/*.xlsx') if str(report_number) in file]
+    latest_file = max(report_files, key=os.path.getctime)
+    return latest_file
+
+sample_surveys = latest_report(3099)
+sample_fundings = latest_report(2006)
+sample_detailed = latest_report(3073)
 
 teams = {
     'Team POSITIVE': [
@@ -48,7 +69,6 @@ _teams = {
         'Debbie McIntyre'
     ]
 }
-
 
 def to_date(date):
     return pd.to_datetime(date).date()
@@ -207,7 +227,8 @@ def run_app_to_ctc_report(file):
     app_dates = [d.date()
                  for d in df['Application Date'].apply(pd.to_datetime)]
     ctc_dates = [d.date() for d in df['Clear To Close'].apply(pd.to_datetime)]
-    df['App To CTC'] = np.busday_count(app_dates, ctc_dates)
+    holidays=['2021-11-25', '2021-11-26']
+    df['App To CTC'] = np.busday_count(app_dates, ctc_dates, holidays=holidays) + 1
 
     df = df[['Loan Number', 'Loan Processor', 'Loan Officer', 'Last Name',
              'Application Date', 'Clear To Close', 'Funding Date Time', 'App To CTC']]
@@ -227,7 +248,11 @@ def run_app_to_ctc_report(file):
         lambda x: assign_team(x, full_names=True))
 
     df = df[df['App To CTC'] < 60]
+    df = df[df['Funding Date'].apply(lambda x: pd.to_datetime(x) >= TARGET_MONTH)]
+    df = df[df['Funding Date'].apply(lambda x: pd.to_datetime(x) < TARGET_ENDS)]
     df = df[df['Team'].apply(lambda x: x in teams.keys())]
+
+
 
     grp = df.groupby('Team')
 
@@ -262,7 +287,7 @@ def run():
     # STEP 1. Run the CTC Side
     ctc_df_list = run_app_to_ctc_report(sample_detailed)
 
-    report_names = [team + ' 20211115' for team in teams.keys()]
+    report_names = [f'{team} {DAY_STAMP}' for team in teams.keys()]
 
     reports = listOfTuples(report_names, ctc_df_list[1:])
 
